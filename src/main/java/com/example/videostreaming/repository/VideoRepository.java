@@ -41,4 +41,23 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      * @return a Page of matching Video records
      */
     Page<Video> findAllByUserIdAndUploadStatus(Long userId, UploadStatus uploadStatus, Pageable pageable);
+
+    /**
+     * Finds all video records in a specific channel with pagination support.
+     *
+     * @param channelId the channel's ID
+     * @param pageable pagination details
+     * @return a Page of matching Video records
+     */
+    Page<Video> findAllByChannelId(Long channelId, Pageable pageable);
+
+    /**
+     * Finds all video records in a specific channel matching a given upload status with pagination support.
+     *
+     * @param channelId the channel's ID
+     * @param uploadStatus the status to filter by
+     * @param pageable pagination details
+     * @return a Page of matching Video records
+     */
+    Page<Video> findAllByChannelIdAndUploadStatus(Long channelId, UploadStatus uploadStatus, Pageable pageable);
 }

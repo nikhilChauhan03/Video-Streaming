@@ -48,6 +48,10 @@ public class Video {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "channel_id", nullable = false)
+    private Channel channel;
+
     @Column(nullable = false, length = 150)
     private String title;
 

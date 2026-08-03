@@ -45,14 +45,15 @@ public class VideoController {
      */
     @GetMapping("/upload-url")
     public ApiResponse<UploadUrlResponse> getUploadUrl(
-            @RequestParam @NotBlank(message = "contentType is required") String contentType) {
+            @RequestParam @NotBlank(message = "contentType is required") String contentType,
+            @RequestParam @jakarta.validation.constraints.NotNull(message = "channelId is required") Long channelId) {
 
         if (!contentType.toLowerCase().startsWith("video/")) {
             throw new IllegalArgumentException("Invalid content type. Only video mime-types are allowed.");
         }
 
-        log.info("Received request for upload URL with contentType: '{}'", contentType);
-        UploadUrlResponse response = videoService.requestUploadUrl(contentType);
+        log.info("Received request for upload URL with contentType: '{}', channelId: '{}'", contentType, channelId);
+        UploadUrlResponse response = videoService.requestUploadUrl(contentType, channelId);
         return ApiResponse.success("Upload URL generated successfully", response);
     }
 

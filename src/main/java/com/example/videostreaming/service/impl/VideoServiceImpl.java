@@ -11,6 +11,8 @@ import com.example.videostreaming.repository.VideoRepository;
 import com.example.videostreaming.security.SecurityContextService;
 import com.example.videostreaming.service.StorageService;
 import com.example.videostreaming.service.VideoService;
+import com.example.videostreaming.service.ChannelService;
+import com.example.videostreaming.entity.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,7 @@ public class VideoServiceImpl implements VideoService {
     private final StorageService storageService;
     private final VideoRepository videoRepository;
     private final SecurityContextService securityContextService;
+    private final ChannelService channelService;
 
     @Value("${minio.bucket-name}")
     private String bucketName;
@@ -43,10 +46,17 @@ public class VideoServiceImpl implements VideoService {
 
     @Override
     @Transactional
-    public UploadUrlResponse requestUploadUrl(String contentType) {
-        log.info("Requesting upload URL for content-type: '{}'", contentType);
+    public UploadUrlResponse requestUploadUrl(String contentType, Long channelId) {
+        log.info("Requesting upload URL for content-type: '{}' in channel: '{}'", contentType, channelId);
 
         User currentUser = securityContextService.getCurrentUser();
+        Channel channel = channelService.getChannelEntityById(channelId);
+
+        // Enforce channel ownership for uploading
+        if (!channel.getOwner().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("You do not own this channel.");
+        }
+
         String extension = getFileExtension(contentType);
         String objectKey = generateObjectKey(extension);
 
@@ -63,10 +73,11 @@ public class VideoServiceImpl implements VideoService {
                 .contentType(contentType)
                 .uploadStatus(UploadStatus.PENDING_UPLOAD)
                 .user(currentUser)
+                .channel(channel)
                 .build();
 
         videoRepository.save(video);
-        log.info("Created pending video stub record for objectKey: '{}'", objectKey);
+        log.info("Created pending video stub record for objectKey: '{}' in channel: '{}'", objectKey, channelId);
 
         return UploadUrlResponse.builder()
                 .uploadUrl(uploadUrl)
@@ -182,5 +193,21 @@ public class VideoServiceImpl implements VideoService {
                 .createdAt(video.getCreatedAt())
                 .updatedAt(video.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getVideosByChannel(Long channelId, UploadStatus status, Pageable pageable) {
+        log.info("Retrieving videos for channel ID: '{}' with status: '{}', pageable: '{}'", channelId, status, pageable);
+        // Verify channel exists
+        channelService.getChannelEntityById(channelId);
+
+        Page<Video> videos;
+        if (status != null) {
+            videos = videoRepository.findAllByChannelIdAndUploadStatus(channelId, status, pageable);
+        } else {
+            videos = videoRepository.findAllByChannelId(channelId, pageable);
+        }
+        return videos.map(this::mapToResponse);
     }
 }
